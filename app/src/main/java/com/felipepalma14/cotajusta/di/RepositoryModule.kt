@@ -14,6 +14,6 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFiiRepository(
-        fiiRepositoryImpl: FiiRepositoryImpl
+        fiiRepositoryImpl: FiiRepositoryImpl,
     ): FiiRepository
 }

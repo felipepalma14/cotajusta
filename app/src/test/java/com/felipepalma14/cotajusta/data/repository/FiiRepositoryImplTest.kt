@@ -1,15 +1,16 @@
 package com.felipepalma14.cotajusta.data.repository
 
-import com.felipepalma14.cotajusta.data.local.dao.FiiDao
+import com.felipepalma14.cotajusta.data.local.FiiLocalDataSource
 import com.felipepalma14.cotajusta.data.local.entity.FiiEntity
-import com.felipepalma14.cotajusta.data.model.Fii
-import com.felipepalma14.cotajusta.data.model.FiiResponse
-import com.felipepalma14.cotajusta.data.remote.api.FiiApi
+import com.felipepalma14.cotajusta.data.remote.model.Fii
+import com.felipepalma14.cotajusta.data.remote.model.FiiResponse
+import com.felipepalma14.cotajusta.data.remote.FiiRemoteDataSource
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -18,19 +19,40 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FiiRepositoryImplTest {
-    private lateinit var api: FiiApi
-    private lateinit var fiiDao: FiiDao
+    private lateinit var remoteDataSource: FiiRemoteDataSource
+    private lateinit var localDataSource: FiiLocalDataSource
     private lateinit var repository: FiiRepositoryImpl
+
+    private val testFiiEntity = FiiEntity(
+        code = "TEST11",
+        name = "Test FII",
+        change = 0.0,
+        closingPrice = 100.0,
+        dividendYield = 0.05,
+        high = 101.0,
+        lastPrice = 100.0,
+        lastYearHigh = 110.0,
+        lastYearLow = 90.0,
+        low = 99.0,
+        priceOpen = 100.0,
+        segment = "Commercial",
+        shares = 1000L,
+        targetAudience = "General",
+        typeOfManagement = "Active",
+        volume = 10000.0,
+        volumeAvg = 9500.0,
+        isFavorite = false
+    )
 
     @Before
     fun setUp() {
-        api = mockk()
-        fiiDao = mockk()
-        repository = FiiRepositoryImpl(api, fiiDao)
+        remoteDataSource = mockk()
+        localDataSource = mockk()
+        repository = FiiRepositoryImpl(remoteDataSource, localDataSource)
     }
 
     @Test
-    fun `given valid api response when getFiis is called then returns success with response`() = runTest {
+    fun `when getFiis is called with success then returns flow of success result`() = runTest {
         // Given
         val fii = Fii(
             change = 1.0,
@@ -52,105 +74,80 @@ class FiiRepositoryImplTest {
             volumeAvg = 9500.0
         )
         val response = FiiResponse(listOf(fii))
-        coEvery { api.getFiis() } returns flowOf(response)
+        coEvery { remoteDataSource.fetchFii() } returns flow { emit(Result.success(response)) }
 
         // When
-        val result = repository.getFiis()
-        val emitted = mutableListOf<Result<FiiResponse>>()
-        result.collect { emitted.add(it) }
+        val result = repository.getFiis().first()
 
         // Then
-        assertTrue(emitted.first().isSuccess)
-        assertEquals(response, emitted.first().getOrNull())
+        assertTrue(result.isSuccess)
+        assertEquals(response, result.getOrNull())
     }
 
     @Test
-    fun `given api error when getFiis is called then returns failure`() = runTest {
+    fun `when getFiis is called with error then returns flow of failure result`() = runTest {
         // Given
-        coEvery { api.getFiis() } throws RuntimeException("API error")
+        val exception = RuntimeException("API error")
+        coEvery { remoteDataSource.fetchFii() } returns flow { emit(Result.failure(exception)) }
 
         // When
-        val result = repository.getFiis()
-        val emitted = mutableListOf<Result<FiiResponse>>()
-        result.collect { emitted.add(it) }
+        val result = repository.getFiis().first()
 
         // Then
-        assertTrue(emitted.first().isFailure)
+        assertTrue(result.isFailure)
+        assertEquals(exception, result.exceptionOrNull())
     }
 
     @Test
-    fun `given local fiis when getLocalFiis is called then returns data from dao`() = runTest {
+    fun `when getLocalFiis is called then returns flow of fiis from local source`() = runTest {
         // Given
-        val fiiEntity = createTestFiiEntity()
-        coEvery { fiiDao.getAllFiis() } returns flowOf(listOf(fiiEntity))
+        val fiis = listOf(testFiiEntity)
+        coEvery { localDataSource.getAllFiis() } returns flow { emit(fiis) }
 
         // When
-        val result = repository.getLocalFiis()
-        val emitted = mutableListOf<List<FiiEntity>>()
-        result.collect { emitted.add(it) }
+        val result = repository.getLocalFiis().first()
 
         // Then
-        assertEquals(listOf(fiiEntity), emitted.first())
+        assertEquals(fiis, result)
     }
 
     @Test
-    fun `given fii list when insertFiis is called then calls dao insertAll`() = runTest {
+    fun `when getFavoriteFiis is called then returns flow of favorite fiis`() = runTest {
         // Given
-        val fiis = listOf<FiiEntity>()
-        coEvery { fiiDao.insertAll(fiis) } returns Unit
+        val favoriteFiis = listOf(testFiiEntity.copy(isFavorite = true))
+        coEvery { localDataSource.getFavorites() } returns flow { emit(favoriteFiis) }
+
+        // When
+        val result = repository.getFavoriteFiis().first()
+
+        // Then
+        assertEquals(favoriteFiis, result)
+    }
+
+    @Test
+    fun `when setFavorite is called then updates favorite status in local source`() = runTest {
+        // Given
+        val code = "TEST11"
+        val isFavorite = true
+        coEvery { localDataSource.setFavorite(code, isFavorite) } returns Unit
+
+        // When
+        repository.setFavorite(code, isFavorite)
+
+        // Then
+        coVerify { localDataSource.setFavorite(code, isFavorite) }
+    }
+
+    @Test
+    fun `when insertFiis is called then saves to local source`() = runTest {
+        // Given
+        val fiis = listOf(testFiiEntity)
+        coEvery { localDataSource.insertAll(fiis) } returns Unit
 
         // When
         repository.insertFiis(fiis)
 
         // Then
-        coVerify { fiiDao.insertAll(fiis) }
+        coVerify { localDataSource.insertAll(fiis) }
     }
-
-    @Test
-    fun `given fii code when setFavorite is called then updates favorite status in dao`() = runTest {
-        // Given
-        coEvery { fiiDao.setFavorite("TSTF11", true) } returns Unit
-
-        // When
-        repository.setFavorite("TSTF11", true)
-
-        // Then
-        coVerify { fiiDao.setFavorite("TSTF11", true) }
-    }
-
-    @Test
-    fun `given favorite fiis when getFavoriteFiis is called then returns favorite fiis from dao`() = runTest {
-        // Given
-        val fiiEntity = createTestFiiEntity(isFavorite = true)
-        coEvery { fiiDao.getFavorites() } returns flowOf(listOf(fiiEntity))
-
-        // When
-        val result = repository.getFavoriteFiis()
-        val emitted = mutableListOf<List<FiiEntity>>()
-        result.collect { emitted.add(it) }
-
-        // Then
-        assertEquals(listOf(fiiEntity), emitted.first())
-    }
-
-    private fun createTestFiiEntity(isFavorite: Boolean = false) = FiiEntity(
-        code = "TSTF11",
-        name = "Test FII",
-        change = 1.0,
-        closingPrice = 100.0,
-        dividendYield = 0.05,
-        high = 105.0,
-        lastPrice = 102.0,
-        lastYearHigh = 110.0,
-        lastYearLow = 90.0,
-        low = 99.0,
-        priceOpen = 100.0,
-        segment = "Segment",
-        shares = 1000,
-        targetAudience = "General",
-        typeOfManagement = "Active",
-        volume = 10000.0,
-        volumeAvg = 9500.0,
-        isFavorite = isFavorite
-    )
 }

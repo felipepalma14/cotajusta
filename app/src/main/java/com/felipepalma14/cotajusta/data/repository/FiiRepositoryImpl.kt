@@ -1,37 +1,31 @@
 package com.felipepalma14.cotajusta.data.repository
 
-import com.felipepalma14.cotajusta.data.model.FiiResponse
-import com.felipepalma14.cotajusta.data.remote.api.FiiApi
-import com.felipepalma14.cotajusta.domain.repository.FiiRepository
-import com.felipepalma14.cotajusta.data.local.dao.FiiDao
+import com.felipepalma14.cotajusta.data.local.FiiLocalDataSource
 import com.felipepalma14.cotajusta.data.local.entity.FiiEntity
+import com.felipepalma14.cotajusta.data.remote.model.FiiResponse
+import com.felipepalma14.cotajusta.data.remote.FiiRemoteDataSource
+import com.felipepalma14.cotajusta.domain.repository.FiiRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.single
+import kotlinx.coroutines.flow.catch
 import javax.inject.Inject
 
 class FiiRepositoryImpl @Inject constructor(
-    private val api: FiiApi,
-    private val fiiDao: FiiDao
+    private val remote: FiiRemoteDataSource,
+    private val local: FiiLocalDataSource
 ) : FiiRepository {
-    override suspend fun getFiis(): Flow<Result<FiiResponse>> = flow {
-        try {
-            val response = api.getFiis()
-            emit(Result.success(response.single()))
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
-    }
+    override suspend fun getFiis(): Flow<Result<FiiResponse>> =
+        remote.fetchFii()
+            .catch { emit(Result.failure(it)) }
 
-    override suspend fun getLocalFiis(): Flow<List<FiiEntity>> = fiiDao.getAllFiis()
+    override suspend fun getLocalFiis(): Flow<List<FiiEntity>> = local.getAllFiis()
 
     override suspend fun insertFiis(fiis: List<FiiEntity>) {
-        fiiDao.insertAll(fiis)
+        local.insertAll(fiis)
     }
 
     override suspend fun setFavorite(code: String, isFavorite: Boolean) {
-        fiiDao.setFavorite(code, isFavorite)
+        local.setFavorite(code, isFavorite)
     }
 
-    override suspend fun getFavoriteFiis(): Flow<List<FiiEntity>> = fiiDao.getFavorites()
+    override suspend fun getFavoriteFiis(): Flow<List<FiiEntity>> = local.getFavorites()
 }

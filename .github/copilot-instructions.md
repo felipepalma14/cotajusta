@@ -29,3 +29,5 @@ We are going to use a simple architecture, where we will have:
 - Even if you think the build.gradle.kts are wrong, the ones you have right now in the context are valid. If you have to modify the libs.versions or the gradle files, just add what you need to add, and don't modify what already exists.
 - Do not include comments just to explain what the code already does. Just in case there is some part that stays like that because in the future you need to add new functionality.
 - After executing compileDebugKotlin, if you see that there are no problems, you can create unit tests for the code you just generated.
+- Method names for unit tests do not need to be longer than 120 characters.
+- Use Given-When-Then for unit tests.

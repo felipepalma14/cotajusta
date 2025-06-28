@@ -1,7 +1,7 @@
 package com.felipepalma14.cotajusta.domain.usecase
 
-import com.felipepalma14.cotajusta.data.model.Fii
-import com.felipepalma14.cotajusta.data.model.FiiResponse
+import com.felipepalma14.cotajusta.data.remote.model.Fii
+import com.felipepalma14.cotajusta.data.remote.model.FiiResponse
 import com.felipepalma14.cotajusta.domain.repository.FiiRepository
 import io.mockk.coEvery
 import io.mockk.mockk

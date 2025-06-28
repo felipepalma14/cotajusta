@@ -1,4 +1,4 @@
-package com.felipepalma14.cotajusta.data.model
+package com.felipepalma14.cotajusta.data.remote.model
 
 data class FiiResponse(
     val fiis: List<Fii>

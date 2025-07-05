@@ -125,7 +125,7 @@ class HomeFiiViewModelTest {
         viewModel.loadFiis()
 
         // When
-        viewModel.searchFiis("Logística")
+        viewModel.onEvent(HomeFiiEvent.Search("Logística"))
 
         // Then
         with(viewModel.state.value) {
@@ -145,7 +145,8 @@ class HomeFiiViewModelTest {
 
         // When
         viewModel.loadFiis()
-        viewModel.toggleFavorite("HGLG11")
+
+        viewModel.onEvent(HomeFiiEvent.ToggleFavorite("HGLG11"))
 
         // Then
         assertEquals("HGLG11", viewModel.state.value.fiis.first().symbol)
@@ -157,7 +158,8 @@ class HomeFiiViewModelTest {
         coEvery { toggleFavoriteFiiUseCase("HGLG11", true) } throws Exception()
 
         // When
-        viewModel.toggleFavorite("HGLG11")
+
+        viewModel.onEvent(HomeFiiEvent.ToggleFavorite("HGLG11"))
 
         // Then
         assertEquals("Erro ao atualizar favorito", viewModel.state.value.error)

@@ -16,6 +16,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed interface HomeFiiEvent {
+    data class Search(val query: String) : HomeFiiEvent
+    data class ToggleFavorite(val symbol: String) : HomeFiiEvent
+    object ClearError : HomeFiiEvent
+}
+
 @HiltViewModel
 class HomeFiiViewModel @Inject constructor(
     private val getFiisUseCase: GetFiisUseCase,
@@ -28,6 +34,14 @@ class HomeFiiViewModel @Inject constructor(
 
     init {
         loadFiis()
+    }
+
+    fun onEvent(event: HomeFiiEvent) {
+        when (event) {
+            is HomeFiiEvent.Search -> searchFiis(event.query)
+            is HomeFiiEvent.ToggleFavorite -> toggleFavorite(event.symbol)
+            HomeFiiEvent.ClearError -> clearError()
+        }
     }
 
     fun loadFiis() {
@@ -96,7 +110,7 @@ class HomeFiiViewModel @Inject constructor(
         }
     }
 
-    fun searchFiis(query: String) {
+    private fun searchFiis(query: String) {
         viewModelScope.launch {
             val filteredList = filterFiis(state.value.fiis, query)
             _state.update {
@@ -109,7 +123,7 @@ class HomeFiiViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(symbol: String) {
+    private fun toggleFavorite(symbol: String) {
         viewModelScope.launch {
             try {
                 toggleFavoriteFiiUseCase(symbol, true)
@@ -133,7 +147,7 @@ class HomeFiiViewModel @Inject constructor(
         }
     }
 
-    fun clearError() {
+    private fun clearError() {
         _state.update { it.copy(error = null) }
     }
 }

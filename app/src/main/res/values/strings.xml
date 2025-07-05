@@ -1,3 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CotaJusta</string>
+    <string name="search_fiis">Buscar fundos imobiliários</string>
+    <string name="no_results_found">Nenhum fundo imobiliário encontrado</string>
+    <string name="add_to_favorites">Adicionar aos favoritos</string>
+    <string name="remove_from_favorites">Remover dos favoritos</string>
 </resources>
